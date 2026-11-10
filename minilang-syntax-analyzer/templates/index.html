@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MiniLang Syntax Analyzer — A Compiler Construction academic project demonstrating lexical analysis, syntax analysis, and AST generation for a simple programming language.">
+    <title>MiniLang Syntax Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <h1>MiniLang Syntax Analyzer</h1>
+                <p class="subtitle">Write a MiniLang program, run it through the compiler stages, and see exactly where something goes wrong.</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ Pipeline ═══ -->
+    <section class="pipeline-section" aria-label="Compiler stages">
+        <div class="pipeline">
+            <span class="pipeline-label">Stages</span>
+            <div class="pipeline-step" id="step-source"><div class="step-label">Source code</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-lexer"><div class="step-label">Lexer</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-tokens"><div class="step-label">Tokens</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-parser"><div class="step-label">Parser</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-ast"><div class="step-label">Syntax tree</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-semantic"><div class="step-label">Semantic check</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-symbols"><div class="step-label">Symbol table</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-tac"><div class="step-label">Intermediate code</div></div>
+            <div class="pipeline-arrow">→</div>
+            <div class="pipeline-step" id="step-stats"><div class="step-label">Statistics</div></div>
+        </div>
+    </section>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main-container">
+        <!-- ─── Editor Panel ─── -->
+        <section class="editor-panel" id="editor-section">
+            <div class="panel-header">
+                <h2>Your code</h2>
+                <div class="line-info" id="line-info">Line 1, Col 1</div>
+            </div>
+            <div class="editor-wrapper">
+                <div class="line-numbers" id="line-numbers">1</div>
+                <textarea
+                    id="code-editor"
+                    spellcheck="false"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    placeholder="Type or paste your MiniLang code here, or pick a sample from “Load example”."
+                >// MiniLang Example Program
+int x = 10;
+int y = 20;
+
+if (x < y) {
+    int sum = x + y;
+    print(sum);
+} else {
+    print("x is not less than y");
+}
+
+// While loop example
+int count = 0;
+while (count < 5) {
+    print(count);
+    count = count + 1;
+}</textarea>
+            </div>
+            <div class="button-bar">
+                <button class="btn btn-primary" id="btn-analyze" onclick="analyzeCode()" title="Analyze your code (Ctrl + Enter)">Analyze</button>
+                <button class="btn btn-secondary" id="btn-clear" onclick="clearEditor()">Clear</button>
+                <div class="dropdown" id="example-dropdown">
+                    <button class="btn btn-secondary" id="btn-examples" onclick="toggleExamples()">
+                        Load example
+                        <span class="dropdown-arrow">▾</span>
+                    </button>
+                    <div class="dropdown-menu" id="example-menu">
+                        <div class="dropdown-label">Working programs</div>
+                        <button onclick="loadExample('hello')">Hello World</button>
+                        <button onclick="loadExample('variables')">Variable Declarations</button>
+                        <button onclick="loadExample('arithmetic')">Arithmetic Expressions</button>
+                        <button onclick="loadExample('ifelse')">If-Else Statement</button>
+                        <button onclick="loadExample('while')">While Loop</button>
+                        <button onclick="loadExample('complex')">Complex Program</button>
+                        <hr>
+                        <div class="dropdown-label">Programs with mistakes</div>
+                        <button onclick="loadExample('error_semicolon')">Missing semicolon</button>
+                        <button onclick="loadExample('error_paren')">Missing parenthesis</button>
+                        <button onclick="loadExample('error_brace')">Missing brace</button>
+                        <button onclick="loadExample('error_expression')">Invalid expression</button>
+                    </div>
+                </div>
+                <span class="shortcut-hint">Tip: press <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to analyze</span>
+            </div>
+        </section>
+
+        <!-- ─── Results Panel ─── -->
+        <section class="results-panel" id="results-section">
+            <!-- Status Banner -->
+            <div class="status-banner" id="status-banner" style="display: none;">
+                <div class="status-icon" id="status-icon"></div>
+                <div class="status-text" id="status-text"></div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs" id="result-tabs" style="display: none;">
+                <button class="tab active" data-tab="tokens" onclick="switchTab('tokens')" title="Your code split into words and symbols">Tokens</button>
+                <button class="tab" data-tab="ast" onclick="switchTab('ast')" title="The structure of your program as a tree">Syntax tree</button>
+                <button class="tab" data-tab="semantic" onclick="switchTab('semantic')" title="Type and variable checks">Semantic check</button>
+                <button class="tab" data-tab="symbols" onclick="switchTab('symbols')" title="All variables found in your program">Symbols</button>
+                <button class="tab" data-tab="tac" onclick="switchTab('tac')" title="Simplified step-by-step instructions">Intermediate code</button>
+                <button class="tab" data-tab="stats" onclick="switchTab('stats')" title="Counts of what your program contains">Statistics</button>
+                <button class="tab" data-tab="errors" onclick="switchTab('errors')" title="Everything that needs fixing">
+                    Errors <span class="error-count" id="error-count" style="display: none;">0</span>
+                </button>
+            </div>
+
+            <!-- Tab Content: Tokens -->
+            <div class="tab-content active" id="tab-tokens">
+                <div class="panel-header">
+                    <h2>Tokens</h2>
+                    <span class="token-count" id="token-count"></span>
+                </div>
+                <p class="panel-desc">The smallest pieces of your code: keywords, names, numbers, and symbols.</p>
+                <div class="table-wrapper">
+                    <table class="token-table" id="token-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Token Type</th>
+                                <th>Value</th>
+                                <th>Line</th>
+                                <th>Column</th>
+                            </tr>
+                        </thead>
+                        <tbody id="token-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content: AST -->
+            <div class="tab-content" id="tab-ast">
+                <div class="panel-header">
+                    <h2>Syntax tree</h2>
+                </div>
+                <div class="ast-toolbar">
+                    <span>Shows how your program is structured. Click any box to see its details.</span>
+                </div>
+                <div class="ast-visual" id="ast-visual"></div>
+                <pre class="ast-display" id="ast-display"></pre>
+            </div>
+
+            <!-- Tab Content: Semantic Analysis -->
+            <div class="tab-content" id="tab-semantic">
+                <div class="panel-header">
+                    <h2>Semantic check</h2>
+                    <span class="token-count" id="semantic-count"></span>
+                </div>
+                <div class="semantic-summary" id="semantic-summary"></div>
+                <div class="error-list" id="semantic-list"></div>
+            </div>
+
+            <!-- Tab Content: Symbol Table -->
+            <div class="tab-content" id="tab-symbols">
+                <div class="panel-header">
+                    <h2>Symbol table</h2>
+                    <span class="token-count" id="symbol-count"></span>
+                </div>
+                <p class="panel-desc">Every variable declared in your program, with its type and where it lives.</p>
+                <div class="table-wrapper">
+                    <table class="token-table" id="symbol-table">
+                        <thead>
+                            <tr><th>#</th><th>Name</th><th>Type</th><th>Scope</th><th>Line</th><th>Status</th></tr>
+                        </thead>
+                        <tbody id="symbol-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content: Three-Address Code -->
+            <div class="tab-content" id="tab-tac">
+                <div class="panel-header">
+                    <h2>Intermediate code</h2>
+                    <span class="token-count" id="tac-count"></span>
+                </div>
+                <p class="panel-desc">Your program rewritten as simple, one-operation-per-line instructions (three-address code).</p>
+                <div class="tac-list" id="tac-list"></div>
+            </div>
+
+            <!-- Tab Content: Statistics -->
+            <div class="tab-content" id="tab-stats">
+                <div class="panel-header">
+                    <h2>Statistics</h2>
+                </div>
+                <div class="stats-grid" id="stats-grid"></div>
+            </div>
+
+            <!-- Tab Content: Errors -->
+            <div class="tab-content" id="tab-errors">
+                <div class="panel-header">
+                    <h2>Errors</h2>
+                </div>
+                <p class="panel-desc">Click an error to jump to that spot in your code.</p>
+                <div class="error-list" id="error-list"></div>
+            </div>
+
+            <!-- Placeholder when no analysis has been run -->
+            <div class="placeholder" id="placeholder">
+                <h3>No results yet</h3>
+                <p>Write some MiniLang code on the left and click <strong>Analyze</strong>. Your tokens, syntax tree, errors, and more will show up here.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══ Footer ═══ -->
+    <footer class="footer">
+        <p>MiniLang Syntax Analyzer &mdash; a Compiler Construction project</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
